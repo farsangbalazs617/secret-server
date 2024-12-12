@@ -1,26 +1,15 @@
-FROM composer:2.6 as vendor
+FROM richarvey/nginx-php-fpm:3.1.6
 
-WORKDIR /tmp/
+COPY . .
 
-COPY composer.json composer.json
+# Image config
+ENV SKIP_COMPOSER 1
+ENV WEBROOT /var/www/html
+ENV PHP_ERRORS_STDERR 1
+ENV RUN_SCRIPTS 1
+ENV REAL_IP_HEADER 1
 
-RUN composer install \
-    --ignore-platform-reqs \
-    --no-interaction \
-    --no-plugins \
-    --no-scripts \
-    --prefer-dist
+# Allow composer to run as root
+ENV COMPOSER_ALLOW_SUPERUSER 1
 
-FROM php:8.2-apache
-
-WORKDIR /var/www/html
-
-COPY . /var/www/html
-COPY --from=vendor /tmp/vendor/ /var/www/html/vendor/
-
-RUN chown -R www-data:www-data /var/www/html \
-    && a2enmod rewrite
-
-EXPOSE 80
-
-CMD ["apache2-foreground"]
+CMD ["/start.sh"]
