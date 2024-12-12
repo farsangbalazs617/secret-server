@@ -5,6 +5,8 @@ namespace SecretServer;
 use Slim\Factory\AppFactory;
 use Slim\App;
 
+use SecretServer\Services\Config;
+
 /**
  * The main application class that manages the Slim application instance and initializes the routes.
  * 
@@ -27,7 +29,7 @@ final class Application
     private static ?App $SlimApp = null;
 
     /**
-     * IDO NOT instanciate it directly.
+     * DO NOT instanciate directly.
      */
     public function __construct()
     {
@@ -54,25 +56,55 @@ final class Application
     }
 
     /**
-     * Runs the Slim application, initializing the routes and executing the application.
+     * Runs the Slim application, handling any exceptions that occur.
+     * 
+     * This method initializes the routes for the Slim application, and then runs the application.
+     * If any exceptions occur during the execution of the application, this method will catch them,
+     * set the appropriate HTTP response headers, and return a JSON-encoded error response.
      */
     public function run(): void
     {
-        self::initRoutes();
-        self::$SlimApp->run();
+        try {
+            
+            self::initRoutes();
+            self::$SlimApp->run();
+
+        } catch (\Exception $e) {
+            header('Content-Type: application/json; charset=utf-8');
+
+            echo json_encode([
+                'error' => [
+                    'code'      => $e->getCode(),
+                    'message'   => $e->getMessage()
+                ]
+            ]);
+        }
     }
 
     /**
      * Initializes the routes for the Slim application.
+     * 
+     * This method reads the routes configuration from the 'routes' key in the Config class,
+     * and registers each route with the Slim application. The routes are defined as an
+     * array, where each element contains the 'route', 'method', 'class', and 'function'
+     * keys to specify the route, HTTP method, and the handler class and function.
+     * 
      */
     private static function initRoutes(): void
     {
-        self::$SlimApp->post('/api/secret', function ($request, $response) {
-            return 'TESZT POST';
-        });
 
-        self::$SlimApp->get('/api/secret/{hash}', function ($request, $response, $args) {
-            return 'TESZT GET';
-        });
+        $routes = Config::get('routes');
+
+        if (!is_array($routes)) {
+            return;
+        }
+
+        foreach ($routes as  $route) {
+            if (!isset($route['route']) || !isset($route['method']) || !isset($route['class']) || !isset($route['function'])) {
+                continue;
+            }
+
+            self::$SlimApp->{$route['method']}($route['route'], [$route['class'], $route['function']]);
+        }
     }
 }
