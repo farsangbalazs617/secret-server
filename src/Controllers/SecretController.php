@@ -35,7 +35,7 @@ class SecretController
                     'message'   => 'The server was unable to process the request.'
                 ]
             ]));
-            return $response->withHeader('Content-Type', 'application/json');
+            return $response->withStatus(422)->withHeader('Content-Type', 'application/json');
         }
 
         $hash = Secret::createSecret(
@@ -58,10 +58,16 @@ class SecretController
      */
     public function view(Request $request, Response $response, array $args): Response
     {
-        $hash = $args['hash'];
+        $hash = $args['hash'] ?? '';
         $secret = Secret::getSecret($hash);
 
         if (!$secret) {
+            $response->getBody()->write(json_encode([
+                'error' => [
+                    'code'      => 404,
+                    'message'   => 'Hash not found.'
+                ]
+            ]));
             return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
         }
 
