@@ -1,0 +1,27 @@
+FROM composer:2.6 as vendor
+
+WORKDIR /tmp/
+
+COPY composer.json composer.json
+COPY composer.lock composer.lock
+
+RUN composer install \
+    --ignore-platform-reqs \
+    --no-interaction \
+    --no-plugins \
+    --no-scripts \
+    --prefer-dist
+
+FROM php:8.2-apache
+
+WORKDIR /var/www/html
+
+COPY . /var/www/html
+COPY --from=vendor /tmp/vendor/ /var/www/html/vendor/
+
+RUN chown -R www-data:www-data /var/www/html \
+    && a2enmod rewrite
+
+EXPOSE 80
+
+CMD ["apache2-foreground"]
